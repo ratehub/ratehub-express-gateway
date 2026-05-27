@@ -13,8 +13,10 @@ jobs:
       !contains(github.event.head_commit.message, '[skip release]')
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GH_RATEHUB_MACHINE_TOKEN }}
+      - uses: actions/setup-node@v4
         with:
           node-version: "14.X"
           registry-url: https://packagecloud.io/ratehub/npm/npm/
