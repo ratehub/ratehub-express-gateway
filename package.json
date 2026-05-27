@@ -148,7 +148,7 @@
   ],
   "release": {
     "branches": [
-      "master"
+      "main"
     ],
     "publish": [
       "@semantic-release/github",
