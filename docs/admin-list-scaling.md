@@ -9,11 +9,18 @@ keys are extremely sparse, so most batches come back with **zero matches and a
 non-zero cursor** — meaning "I looked at 100 slots, none matched, keep going."
 
 The previous bug was that `findAll` overwrote that cursor with `0`, making the
-endpoint falsely report "iteration complete." That was fixed by preserving the
-real cursor (see `lib/services/consumers/user.dao.js` and `application.dao.js`).
+endpoint falsely report "iteration complete." It was first fixed by preserving
+the real cursor so paginating clients could walk to completion. That left a
+secondary UX problem — a single `GET /users` returns at most one COUNT-sized
+batch, so a busy Redis required dozens of round trips to surface a handful of
+users. The current `findAll` therefore loops `SCAN` server-side until the
+cursor returns to `0` and returns every match in one response, with
+`nextKey: 0`. See `lib/services/consumers/user.dao.js` and
+`application.dao.js`.
 
-What's left is the underlying scaling problem the fix exposes: pagination now
-*works*, but it's slow.
+What's left is the underlying scaling problem this hides: each `GET /users`
+call still blocks on a full keyspace traversal (`O(total Redis keys)`),
+because there is no index of users separate from the keyspace itself.
 
 ## Measured behavior on a real Redis
 
@@ -83,13 +90,13 @@ safest sequence is:
 For a single-instance gateway you can skip step 1 and just run the backfill
 right before the switch, accepting a few seconds of empty-list responses.
 
-### Alternative considered: server-side SCAN loop
+### Current behavior: server-side SCAN loop
 
-Have `findAll` iterate SCAN internally until cursor returns to 0 and return
-everything in one call. Simpler than an index — no insert/remove changes, no
-backfill — but every list request blocks on a full keyspace traversal. Fine for
-small deployments, terrible as the Redis grows. Use only if maintaining an
-index is genuinely out of scope.
+`findAll` iterates SCAN internally until the cursor returns to 0 and returns
+everything in one response. Simpler than an index — no insert/remove changes,
+no backfill — but every list request blocks on a full keyspace traversal.
+Fine for the current Redis size; the index migration above is the right move
+once admin-API latency or Redis load from these endpoints becomes a problem.
 
 ### Alternative considered: bump default COUNT
 
