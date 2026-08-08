@@ -81,7 +81,7 @@
     "http-proxy": "^1.18.1",
     "ioredis": "^5.2.3",
     "ioredis-mock": "^8.2.2",
-    "js-yaml": "^3.14.1",
+    "js-yaml": "^3.15.1",
     "json-schema-merge-allof": "^0.6.0",
     "json-schema-ref-parser": "^7.1.4",
     "jsonwebtoken": "^8.5.1",
